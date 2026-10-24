@@ -13,3 +13,6 @@ data/
 frontend/dist/
 cloud-login.txt
 *.zip
+*.egg-info/
+build/
+vendor/

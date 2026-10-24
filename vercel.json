@@ -1,31 +1,51 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
-  "installCommand": "npm --prefix frontend ci",
-  "buildCommand": "npm --prefix frontend run build",
-  "outputDirectory": "frontend/dist",
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 30,
-      "includeFiles": "frontend/dist/index.html"
+  "services": {
+    "app": {
+      "root": ".",
+      "runtime": "python",
+      "entrypoint": "api.index:app",
+      "functions": {
+        "api/index.py": { "maxDuration": 30 }
+      },
+      "bindings": [
+        {
+          "type": "service",
+          "service": "frontend",
+          "format": "url",
+          "env": "AEGIS_FRONTEND_URL"
+        }
+      ]
+    },
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite",
+      "installCommand": "npm ci",
+      "buildCommand": "npm run build",
+      "devCommand": "npm run dev:services",
+      "outputDirectory": "dist"
     }
   },
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/api/index.py?route=dashboard"
+      "source": "/assets/(.*)",
+      "destination": { "service": "frontend" }
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": { "service": "app" }
     },
     {
       "source": "/login",
-      "destination": "/api/index.py?route=login"
+      "destination": { "service": "app" }
     },
     {
       "source": "/logout",
-      "destination": "/api/index.py?route=logout"
+      "destination": { "service": "app" }
     },
     {
-      "source": "/api/:path*",
-      "destination": "/api/index.py?route=:path*"
+      "source": "/(.*)",
+      "destination": { "service": "app" }
     }
   ],
   "daemons": {

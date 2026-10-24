@@ -2,19 +2,45 @@
 import html,json,os,secrets,time
 from pathlib import Path
 from types import SimpleNamespace
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs,urlsplit
+from urllib.request import Request,build_opener
 from aegis.cloud_auth import Login
 from aegis.cloud_runtime import open_store,enqueue,command_rows,CloudConnection
 from aegis.cloud_secrets import CloudVault
 from aegis.intelligence.spot_model import SpotAnalyst
 from aegis.binance import Binance
 from aegis.domain import Blocked
-from aegis.transport import RemoteError
+from aegis.transport import RemoteError,NoRedirect
 
 ROOT=Path(__file__).resolve().parent.parent
 LOGIN='''<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aegis login</title><style>body{font:16px Segoe UI,sans-serif;background:#f4f7f7;color:#18313b;min-height:95vh;display:grid;place-items:center;margin:0}main{background:white;border:1px solid #dde8e7;padding:40px;border-radius:20px;width:min(340px,80vw)}h1{margin:8px 0}p{color:#6f838b;line-height:1.7}label{display:block;margin-top:20px;font-size:13px}input,button{box-sizing:border-box;width:100%;padding:13px;margin-top:8px;border:1px solid #d9e4e4;border-radius:8px;font:inherit}button{background:#087e67;color:white;cursor:pointer;margin-top:28px}b{color:#087e67}.error{color:#af4545}</style></head><body><main><b>AEGIS</b><h1>Your trading workspace</h1><p>Sign in to view your wallet and control the agent.</p>ERROR<form method="post" action="/login"><label>Username<input name="username" autocomplete="username" required autofocus></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button>Sign in</button></form></main></body></html>'''
 
 _store=None
+_frontend_opener=build_opener(NoRedirect)
+
+def dashboard_document():
+    """Read the independently built UI through the caller's runtime binding."""
+    base=os.environ.get('AEGIS_FRONTEND_URL','')
+    if base:
+        target=urlsplit(base)
+        if target.scheme not in ('http','https') or not target.hostname or target.username or target.password or target.query or target.fragment:
+            raise RuntimeError('Invalid frontend service binding')
+        # Preserve any binding path prefix. Never send owner cookies, tokens or
+        # credentials to the static service, and never follow a service redirect.
+        request=Request(base.rstrip('/')+'/',headers={'Accept':'text/html'})
+        with _frontend_opener.open(request,timeout=8) as response:
+            if response.status!=200 or response.headers.get_content_type()!='text/html':
+                raise RuntimeError('Frontend service did not return the dashboard')
+            raw=response.read(1048577)
+        if len(raw)>1048576:raise RuntimeError('Frontend document is too large')
+        source=raw.decode('utf-8')
+    else:
+        if os.environ.get('VERCEL'):
+            raise RuntimeError('Frontend service binding is missing')
+        source=(ROOT/'frontend/dist/index.html').read_text(encoding='utf-8')
+    if '<head>' not in source or '__AEGIS_SESSION__' not in source:
+        raise RuntimeError('Frontend document is incompatible')
+    return source
 def database():
     global _store
     if _store is None:_store=open_store()
@@ -59,8 +85,8 @@ def application(env,start_response):
         if method=='POST' and not secrets.compare_digest(env.get('HTTP_X_AEGIS_TOKEN',''),auth.csrf(session)):raise Blocked('Session expired; refresh and retry')
         if path=='/logout' and method=='POST':return redirect('/login',[('Set-Cookie','aegis_owner=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')])
         if path in ('/','/login','/api/index.py') and method=='GET':
-            source=(ROOT/'frontend/dist/index.html').read_text(encoding='utf-8')
-            source=source.replace('<head>','<head><meta name="aegis-cloud" content="1"><meta name="aegis-session" content="'+auth.csrf(session)+'">')
+            source=dashboard_document()
+            source=source.replace('__AEGIS_SESSION__',html.escape(auth.csrf(session),quote=True)).replace('<head>','<head><meta name="aegis-cloud" content="1">')
             return respond('200 OK',source,'text/html')
         store=database()
         if path in ('/api/state','/api/intelligence') and method=='GET':
