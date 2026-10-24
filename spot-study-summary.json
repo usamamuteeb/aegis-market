@@ -1,0 +1,48 @@
+{
+  "version": "spot-study-v1",
+  "created_at": 1792862982.2956111,
+  "source_sha256": "7f555710ede82786ac71f03d80d2f4dafa50e57e38e3d766a372ca580928c3db",
+  "status": "No profitable baseline found; GPT improvement unmeasured; real trading disabled",
+  "baseline_result": "negative",
+  "summary": "Configured-cost combined baseline: 26 closed trades, -1.0246 USDT from 10 USDT in the final 18 previously inspected days. No GPT calls were made. No automatic strategy promotion.",
+  "cases": 36,
+  "coverage": {
+    "BTCUSDT": 86400,
+    "ETHUSDT": 86400,
+    "SOLUSDT": 86400,
+    "DOGEUSDT": 86400
+  },
+  "gpt_comparison": "Not measured: this offline run never calls GPT. The separate forward wallets collect a prospective comparison.",
+  "combined_10_evaluation": [
+    {
+      "cost_scenario": "configured",
+      "closed_trades": 26,
+      "net_total": "-1.02455607003585068863568",
+      "fees": "0.39113476672008000431568",
+      "win_rate": 0.07692307692307693,
+      "max_drawdown": "0.102641929795585068863568",
+      "dust_marked_value": "0.0600509195200000",
+      "liquidatable_equity": "8.91539301044414931136432"
+    },
+    {
+      "cost_scenario": "tight_sensitivity",
+      "closed_trades": 46,
+      "net_total": "-1.029126088689792353179470",
+      "fees": "0.694330729227812002649470",
+      "win_rate": 0.10869565217391304,
+      "max_drawdown": "0.1030123148973792362659470",
+      "dust_marked_value": "0.09710472855600000",
+      "liquidatable_equity": "8.873769182754207646820530"
+    },
+    {
+      "cost_scenario": "stress",
+      "closed_trades": 0,
+      "net_total": "0",
+      "fees": "0",
+      "win_rate": null,
+      "max_drawdown": "0",
+      "dust_marked_value": "0",
+      "liquidatable_equity": "10"
+    }
+  ]
+}

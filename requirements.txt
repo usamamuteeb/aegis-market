@@ -1,0 +1,6 @@
+PyJWT==2.15.1
+cryptography==50.0.2
+cffi==2.1.1
+pycparser==3.12
+psycopg[binary]==3.3.6
+certifi>=2024.8.30

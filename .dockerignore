@@ -1,0 +1,13 @@
+**/.env*
+**/node_modules
+**/.venv
+**/__pycache__
+**/*.dpapi
+**/*.sqlite*
+.git
+outputs
+research-workspace
+data
+
+cloud-login.txt
+verification

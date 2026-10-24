@@ -1,0 +1,41 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm --prefix frontend ci",
+  "buildCommand": "npm --prefix frontend run build",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 30,
+      "includeFiles": "frontend/dist/index.html"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/index.py?route=dashboard"
+    },
+    {
+      "source": "/login",
+      "destination": "/api/index.py?route=login"
+    },
+    {
+      "source": "/logout",
+      "destination": "/api/index.py?route=logout"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index.py?route=:path*"
+    }
+  ],
+  "daemons": {
+    "aegis-worker": {
+      "root": ".",
+      "entrypoint": "Dockerfile",
+      "instances": {
+        "fra1": 1
+      },
+      "terminationGracePeriodSeconds": 30
+    }
+  }
+}
