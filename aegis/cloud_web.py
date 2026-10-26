@@ -124,7 +124,17 @@ def application(env,start_response):
                 return respond('200 OK',{'connected':True,'can_trade':bool(account.get('canTrade'))})
             return respond('202 Accepted',enqueue(store,route,body))
         return respond('404 Not Found',{'error':'Not found'})
-    except RemoteError as exc:return respond('400 Bad Request',{'error':'Binance rejected the API key, allowed IP or permissions (-2015)' if exc.code==-2015 else str(exc)})
+    except RemoteError as exc:
+        message=str(exc)
+        if exc.code==-2015:
+            message='Binance rejected the API key, allowed IP or permissions (-2015). The cloud server needs its own verified outbound IP allowlisted.'
+        elif exc.status==451:
+            message='Binance blocked access from this deployment location (HTTP 451). Confirm account and hosting-location eligibility with Binance Support; changing API keys does not resolve this response.'
+        elif exc.status in (418,429):
+            message='Binance rate-limited this connection (HTTP '+str(exc.status)+'). Wait for the exchange retry window before reconnecting.'
+        elif exc.status==0:
+            message='The cloud server could not reach Binance or the request timed out. No connection was confirmed.'
+        return respond('400 Bad Request',{'error':message,'upstream_http_status':exc.status or None,'exchange_code':exc.code})
     except (Blocked,ValueError,TypeError,json.JSONDecodeError) as exc:return respond('400 Bad Request',{'error':str(exc)})
     except Exception:
         failed=_store;_store=None

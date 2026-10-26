@@ -73,6 +73,18 @@ class CloudTests(unittest.TestCase):
   self.assertEqual(login.valid({'Cookie':'aegis_owner='+token}),token)
   self.assertIsNone(login.valid({'Cookie':'aegis_owner='+token+'x'}))
   with patch('time.time',return_value=time.time()+50000):self.assertIsNone(login.valid({'Cookie':'aegis_owner='+token}))
+ def test_binance_connection_failure_reports_status_without_secret_or_model_call(self):
+  from aegis.transport import RemoteError
+  envvars={'AEGIS_USERNAME':'aegis','AEGIS_PASSWORD':'private-example-pass','AEGIS_SESSION_SECRET':'s'*40,'AEGIS_ENCRYPTION_KEY':self.key,'AEGIS_LOCAL_WORKSPACE':self.tmp.name}
+  login=Login('aegis','private-example-pass','s'*40,False);token=login.token();captured={}
+  body=json.dumps({'key':'private-exchange-key','secret':'private-exchange-secret'}).encode()
+  def start(status,headers):captured.update(status=status)
+  for status,code,expected in ((451,None,'deployment location'),(401,-2015,'allowed IP'),(0,None,'timed out'),(429,None,'rate-limited')):
+   env={'PATH_INFO':'/api/binance/connect','REQUEST_METHOD':'POST','CONTENT_LENGTH':str(len(body)),'wsgi.input':io.BytesIO(body),'wsgi.url_scheme':'http','HTTP_HOST':'127.0.0.1','HTTP_COOKIE':'aegis_owner='+token,'HTTP_X_AEGIS_TOKEN':login.csrf(token)}
+   with self.subTest(status=status),patch.dict(os.environ,envvars),patch('aegis.cloud_web.database',return_value=self.store),patch('aegis.cloud_web.Binance.connect',side_effect=RemoteError('Binance',status,code)),patch('aegis.cloud_web.CloudConnection') as model:
+    raw=b''.join(application(env,start));result=json.loads(raw)
+    self.assertEqual(captured['status'],'400 Bad Request');self.assertEqual(result['upstream_http_status'],status or None);self.assertEqual(result['exchange_code'],code)
+    self.assertIn(expected,result['error']);self.assertNotIn(b'private-exchange',raw);model.assert_not_called()
  def test_postgres_sql_contract_uses_bigint_and_atomic_upserts(self):
   self.assertIn('ON CONFLICT DO NOTHING',sql('INSERT OR IGNORE INTO state VALUES(?,?)'))
   self.assertIn('ON CONFLICT(key)',sql('INSERT OR REPLACE INTO assessment_cache VALUES(?,?,?)'))
