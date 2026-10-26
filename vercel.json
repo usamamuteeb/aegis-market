@@ -6,7 +6,7 @@
       "runtime": "python",
       "entrypoint": "api.index:app",
       "functions": {
-        "api/index.py": { "maxDuration": 30 }
+        "api/index.py": { "maxDuration": 30, "regions": ["fra1"] }
       },
       "bindings": [
         {
